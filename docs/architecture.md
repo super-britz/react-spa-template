@@ -1,120 +1,144 @@
-# 前端架构约定
+# Feature-Sliced Design 架构约定
 
 ## 结论
 
-当前项目只有一个页面，没有路由、接口或跨页面业务能力，因此采用最小的 Page-first 架构：
+本项目严格遵循 Feature-Sliced Design（FSD）的三级结构：
 
 ```text
-main → app → pages
+Layer → Slice → Segment
 ```
 
-不预先创建空的 `features`、`shared`、`entities` 等目录。只有实际复杂度出现后，才增加对应边界。
+当前业务只有一个页面，因此只使用实际需要的 `app` 和 `pages` Layer。FSD 不要求创建所有 Layer；没有真实代码时，不创建空的 `widgets`、`features`、`entities` 或 `shared`。
 
 ## 当前目录
 
 ```text
 src/
-├── main.tsx                 # 浏览器入口，只负责挂载 React
-├── app/
-│   ├── App.tsx              # 应用装配入口
-│   └── styles/
-│       └── global.css       # 全局设计变量和元素基础样式
-├── pages/
-│   └── home/
-│       ├── HomePage.tsx     # 首页结构、行为和局部状态
-│       └── home-page.css    # 首页专属样式
-└── assets/                  # 当前页面使用的静态资源
+├── app/                         # App Layer，不包含 Slice
+│   ├── entrypoint/              # 应用入口 Segment
+│   │   ├── main.tsx             # 挂载 React
+│   │   └── App.tsx              # 组合页面
+│   └── styles/                  # 全局样式 Segment
+│       └── global.css
+└── pages/                       # Pages Layer
+    └── home/                    # home Slice
+        ├── index.ts             # Slice Public API
+        └── ui/                  # UI Segment
+            ├── HomePage.tsx
+            ├── home-page.css
+            └── ...              # 首页专属图片
 ```
 
-## 为什么这样组织
+根目录的 `public/` 由 Vite 直接管理，不属于 FSD Layer；favicon、无需构建处理的静态文件可以保留在这里。
 
-页面是 SPA 中天然的模块边界。一个页面通常共同拥有路由、数据、状态、交互以及加载和错误表现。当前首页的计数状态只影响首页，因此保留在 `HomePage` 中；把它提前放入全局 Store 会增加新的事实来源和同步成本。
+## 三层结构的职责
 
-应用装配与页面实现分离，是因为它们由不同原因变化：
+- **Layer** 表示责任和依赖高度。当前依赖方向是 `app → pages`。
+- **Slice** 按产品或业务含义划分。`home` 是一个页面 Slice。
+- **Segment** 按技术目的组织 Slice 内部代码，例如 `ui`、`api`、`model`、`lib`、`config`。
 
-- `app` 随路由、Provider、全局布局和监控方式变化。
-- `pages/home` 随首页内容和交互变化。
-- 全局样式随设计基础规范变化。
+页面是 SPA 中天然的业务边界。首页的 UI、样式、状态和专属图片因同一种页面需求变化，因此共同保留在 `pages/home/ui`。当前计数状态只影响首页，继续使用组件局部状态。
 
-## 依赖规则
+## 依赖与 Public API 规则
 
-1. `main.tsx` 只负责挂载应用，不编写业务或页面逻辑。
-2. `app` 可以组合页面，页面不能反向依赖 `app`。
-3. 页面之间不直接引用彼此的内部文件。
-4. 页面专属代码与页面放在一起，不提前提升为全局抽象。
-5. 不创建没有实际内容的架构目录。
-6. 共享代码按照真实复用范围放置，不因为“以后可能复用”提前抽取。
+1. 高层只能依赖更低层：`app → pages → widgets → features → entities → shared`。
+2. 同一 Layer 的不同 Slice 不能互相依赖，例如一个 Page 不能导入另一个 Page。
+3. 每个 Slice 必须提供 Public API，通常是 Slice 根目录的 `index.ts`。
+4. Slice 外部只能通过 Public API 导入，不能引用其 `ui`、`api`、`model` 等内部路径。
+5. 同一 Slice 内部使用相对路径，可以直接引用本 Slice 的其他文件。
+6. `app` 和 `shared` 不包含 Slice，直接按 Segment 组织。
+7. 不增加自定义顶层 Layer，也不创建没有实际内容的架构目录。
 
-## 复杂度出现后的演进规则
+例如，App 只能这样使用首页：
 
-### 增加新页面
+```ts
+import { HomePage } from '../../pages/home'
+```
 
-新增独立页面时，在 `pages` 下建立对应目录：
+不能绕过 Public API：
+
+```ts
+import { HomePage } from '../../pages/home/ui/HomePage'
+```
+
+## 静态资源规则
+
+静态资源和代码遵循同样的归属原则：
+
+1. 只被一个 Slice 使用：放在该 Slice 内，靠近使用它的 Segment。
+2. 被多个 Slice 复用且没有具体业务含义：放入 `shared/ui`。
+3. 全局样式、字体等应用级资源：放入 `app/styles`、`app/fonts` 或 `public/`。
+4. 不建立按文件类型集中所有业务资源的顶层 `src/assets`。
+
+## 增加新页面
+
+每个独立页面默认建立一个 Page Slice，并提供 Public API：
 
 ```text
 pages/
 ├── home/
-└── orders/
-    ├── list/
-    └── detail/
+│   ├── index.ts
+│   └── ui/
+├── orders-list/
+│   ├── index.ts
+│   └── ui/
+└── order-details/
+    ├── index.ts
+    └── ui/
 ```
 
-每个页面可以就近保存自己的组件、请求、状态和测试。不要先建立全局的 `components`、`hooks`、`services` 再把一个页面拆散。
+页面专属的请求放入该 Slice 的 `api`，页面模型放入 `model`。不要先建立全局的 `components`、`hooks` 或 `services` 再把页面代码拆散。
 
-### 增加 `features`
+## 增加 Feature
 
-一个业务能力同时满足以下多个条件时，再提取到 `src/features`：
-
-- 跨越多个页面；
-- 有独立业务目标；
-- 拥有自己的状态、接口或错误处理；
-- 需要独立测试或由不同需求推动变化。
-
-例如列表页和详情页都需要使用同一套取消订单流程时：
+Feature 表示为用户提供业务价值、并在多个页面复用的交互。只有真实需求出现时才创建，例如：
 
 ```text
 features/
 └── cancel-order/
-    ├── CancelOrderButton.tsx
-    ├── useCancelOrder.ts
-    └── cancelOrder.ts
+    ├── index.ts
+    ├── ui/
+    │   └── CancelOrderButton.tsx
+    ├── model/
+    │   └── useCancelOrder.ts
+    └── api/
+        └── cancelOrder.ts
 ```
 
-只在一个页面使用的取消按钮仍应留在该页面中。
+只在一个页面使用的交互仍可留在 Page Slice；FSD 不要求把每个用户动作都提前拆成 Feature。
 
-### 增加 `shared`
+## 增加 Shared
 
-代码已经被多个页面或 Feature 使用，并且不包含具体业务含义时，再放入 `src/shared`：
+`shared` 只承载不依赖具体业务 Slice 的基础能力，并直接按 Segment 组织：
 
 ```text
 shared/
-├── ui/       # Button、Dialog 等基础交互
-├── api/      # HTTP Client 等通信机制
-├── lib/      # 日期、金额等单一用途库
-└── config/   # 环境和全局配置
+├── ui/       # UI Kit
+├── api/      # HTTP Client
+├── lib/      # 单一目的的基础库
+└── config/   # 环境与全局配置
 ```
 
-带有 `Order`、`Product` 等具体业务语义的代码，不应因为复用就直接进入全局 `shared`；应先判断它属于哪个业务边界。
+`shared` 的每个 Segment 应提供自己的 Public API。带有 `Order`、`Product` 等具体业务含义的代码，应先判断属于 `entities`、`features` 还是页面，而不是因为复用就直接放入 `shared`。
 
 ## 状态放置顺序
 
-新增状态时按以下顺序判断：
-
 1. 只影响一个组件：组件局部状态。
-2. 只影响一个页面：页面状态。
+2. 只影响一个页面：Page Slice 的 `model` 或 `ui`。
 3. 可以从已有数据计算：不保存，直接派生。
 4. 需要刷新后保留或支持分享：优先考虑 URL。
 5. 来自服务端：使用服务端数据缓存方案，不重复复制到全局 Store。
-6. 确实跨越多个无共同父级的页面：再考虑全局客户端状态。
+6. 真正跨越多个边界的客户端状态：放入最符合业务含义的下层 Slice，再由高层组合。
 
-## 架构检查问题
+## 新增代码前检查
 
-每次新增目录或抽象前，回答：
+1. 它属于哪个 Layer？
+2. 它表达哪个业务 Slice？
+3. 它在 Slice 中承担什么技术目的？
+4. 外部是否只通过 Public API 使用它？
+5. 依赖是否只指向严格更低的 Layer？
+6. 资源是否放在最接近实际使用位置的地方？
 
-1. 它解决了当前哪一种真实复杂度？
-2. 哪些代码会因为同一种原因一起变化？
-3. 代码留在页面内是否已经足够清晰？
-4. 抽取后是否减少了依赖和重复规则？
-5. 新结构引入的理解成本是否值得？
+项目保持严格的 FSD 边界，同时继续按真实需求渐进增加 Layer 和 Slice。
 
-本项目的演进原则是：先保持页面局部性，再根据真实的跨页面复用和独立变化提取 Feature，避免用预设目录制造人为复杂度。
+运行 `npm run lint:fsd` 可以单独检查 FSD 规则；`npm run check` 会将架构检查与代码、类型和生产构建检查一起执行。

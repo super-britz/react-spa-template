@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import heroImg from '../../assets/hero.png'
-import reactLogo from '../../assets/react.svg'
-import viteLogo from '../../assets/vite.svg'
+import heroImg from './hero.png'
+import reactLogo from './react.svg'
+import viteLogo from './vite.svg'
 import './home-page.css'
 
 export function HomePage() {
@@ -18,7 +18,7 @@ export function HomePage() {
         <div>
           <h1>React SPA Template</h1>
           <p>
-            Edit <code>src/pages/home/HomePage.tsx</code> and save to test{' '}
+            Edit <code>src/pages/home/ui/HomePage.tsx</code> and save to test{' '}
             <code>HMR</code>
           </p>
         </div>
