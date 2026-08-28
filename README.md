@@ -47,6 +47,8 @@ src/
 
 FSD 不要求使用全部 Layer。当前没有真实的跨页面业务能力，因此不预先创建空的 `widgets`、`features`、`entities` 和 `shared`。详细规则见 [FSD 架构约定](docs/architecture.md)。
 
+维护项目时遵循根目录的 [AGENTS.md](AGENTS.md)：它保存简短、可执行的代码归属和依赖约束；`docs/architecture.md` 负责解释这些规则背后的原因。
+
 ## 从模板开始开发
 
 1. 修改 `package.json` 中的包名和描述。
