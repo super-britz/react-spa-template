@@ -8,7 +8,7 @@
 模板当前是最小 FSD 结构（仅 `app`、`pages` 两层），工程底盘有 Oxlint、Steiger、TypeScript 和 CI，但没有路由、请求、测试和格式化能力。本次丰富的目标定位是四个方向的组合：
 
 1. **开箱即用的项目起点**：预装一套克制的默认技术栈，新项目 clone 下来即可开发。
-2. **保持极简、强化工程化**：每个依赖都有明确职责，不预装投机性依赖（如全局状态库）。
+2. **保持极简、强化工程化**：每个依赖都有明确职责，不预装投机性依赖（如 UI 组件库、i18n）。
 3. **FSD 教学示范**：以文档「生长指南」承载，主分支不放跨层演示代码。
 4. **新技术试验场**：作为后续用法，不在本次实施范围内。
 
@@ -19,9 +19,9 @@
 | 决策点 | 结论 |
 |---|---|
 | 运行时能力 | 路由、请求 + 服务端状态、样式方案、Mock 全部预装 |
-| 全局客户端状态（Zustand 等） | 不预装，保持「真实需求驱动」原则 |
+| 全局客户端状态（Zustand） | 预装 zustand；store 归属各业务 Slice 的 `model`，不建全局 `src/store` 目录；服务端数据仍归 TanStack Query |
 | 路由库 | React Router v7（声明式模式），放弃 TanStack Router（生成步骤与学习成本高） |
-| HTTP 客户端 | 原生 fetch 薄封装，不引 axios |
+| HTTP 客户端 | axios 实例 + 拦截器，错误统一为 `ApiError` |
 | 样式 | Tailwind CSS v4（@tailwindcss/vite 插件，CSS-first 配置） |
 | Mock | MSW v2，仅 dev 环境启用 |
 | 工程化 | Vitest + Testing Library、Prettier、simple-git-hooks + lint-staged、CI 增强 |
@@ -39,7 +39,8 @@
 |---|---|---|
 | 路由 | react-router | v7 声明式模式 |
 | 服务端状态 | @tanstack/react-query | v5 |
-| HTTP | 原生 fetch 封装于 shared/api | — |
+| HTTP | axios（`shared/api` 统一实例与拦截器） | v1 |
+| 客户端状态 | zustand | v5 |
 | 样式 | tailwindcss + @tailwindcss/vite + prettier-plugin-tailwindcss | v4 |
 | Mock | msw | v2 |
 | 测试 | vitest + @testing-library/react + @testing-library/jest-dom + jsdom | 最新稳定 |
@@ -69,11 +70,13 @@ src/
 │   └── demo/
 │       ├── index.ts            # Public API: DemoPage
 │       ├── api/fetchDemoData.ts
-│       ├── model/useDemoData.ts    # useQuery 封装
+│       ├── model/
+│       │   ├── useDemoData.ts  # useQuery 封装
+│       │   └── demo-store.ts   # Zustand store（页面级客户端状态示例）
 │       └── ui/DemoPage.tsx     # loading / error / success 完整状态展示
 ├── shared/
 │   ├── api/
-│   │   ├── http-client.ts      # baseURL、JSON、统一 ApiError
+│   │   ├── http-client.ts      # axios 实例：baseURL、拦截器、统一 ApiError
 │   │   └── index.ts
 │   └── ui/                     # 仅放真实被用到的组件（如加载态）
 └── mocks/                      # 开发基础设施，非 FSD 层
@@ -92,9 +95,15 @@ src/
 
 ### 请求链路
 
-- `shared/api/http-client.ts`：封装 fetch——拼接 `VITE_API_BASE_URL`、JSON 序列化/解析、非 2xx 抛统一 `ApiError`。
+- `shared/api/http-client.ts`：导出统一 axios 实例——baseURL 读 `VITE_API_BASE_URL`、设置超时；响应拦截器把非 2xx 响应与网络错误归一为 `ApiError`（含 status、message、原始错误）。JSON 序列化与解析由 axios 处理。
 - 页面请求函数放各自 Slice 的 `api` Segment，`useQuery` hook 放 `model` Segment，queryKey 以 Slice 名为前缀。
 - MSW handler 拦截 `/api/*` 并加人为延迟（约 800ms），使 demo 页面可观察 loading 与错误态。
+
+### 客户端状态（Zustand）
+
+- 预装 zustand，但**不建全局 `src/store` 目录**：store 属于拥有该状态的 Slice，放在该 Slice 的 `model` Segment，由各组件用 selector 订阅。
+- demo 页面提供一个页面级 store 示例（如列表展示偏好），演示 `create` + selector 订阅的最小模式；该状态在路由切换后保留，体现客户端状态与服务端缓存（Query）的分工。
+- 服务端数据一律走 TanStack Query，不复制进 store；跨页面状态的提升路径（下沉到业务 Slice 的 `model` 再由高层组合）写入 growth-guide。
 
 ### 样式
 
@@ -123,7 +132,7 @@ src/
 
 - **README.md**：重写定位（克制的开箱即用基线）、命令、目录、从模板开始的步骤。
 - **docs/architecture.md**：更新路由装配位置、请求链路约定、`src/mocks` 定位、测试约定、check 命令构成。
-- **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，承载教学示范职责。
+- **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，含跨页面客户端状态（Zustand store）的提升路径，承载教学示范职责。
 - **AGENTS.md**：同步新增命令、mock 目录规则、样式约定。
 - **`example/full-fsd` 分支**（实施完成后单独进行）：基于主分支追加跨层完整示例（如 posts 列表/详情共用 entities/post 与 features），主分支保持纯净。
 
@@ -131,7 +140,7 @@ src/
 
 1. Tailwind 接入与现有页面样式迁移。
 2. React Router 接入，路由表落到 `app/routes`。
-3. 请求链路：http-client → demo 页面（api/model/ui）→ MSW 与 .env.example。
+3. 请求链路与客户端状态：axios 实例（http-client）→ demo 页面（api/model/ui，含 Zustand store 示例）→ MSW 与 .env.example。
 4. Vitest + Testing Library 接入，补两类示例测试。
 5. Prettier、editorconfig、git hooks。
 6. CI 与 `check` 命令更新、bundle 分析脚本。
@@ -142,6 +151,7 @@ src/
 
 - `npm run check` 全绿（lint、FSD 架构检查、类型、测试、构建）。
 - `npm run dev` 启动后：首页可经导航进入 demo 页，demo 页展示 MSW 驱动的 loading → success/error 完整状态。
-- 断网或禁用 mock 时错误路径可见且类型正确。
+- 断网或禁用 mock 时错误路径可见且类型正确（`ApiError`）。
+- demo 页的 Zustand 状态在路由切换后保留，且 store 中没有复制任何服务端数据。
 - `git commit` 触发 pre-commit 自动 lint + format。
 - 文档与实际结构一致，无「不预装路由」类过时表述。
