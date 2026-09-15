@@ -26,3 +26,12 @@ jobs:
 
       - name: Check
         run: npm run check
+
+      - name: Coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/

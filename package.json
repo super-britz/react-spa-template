@@ -17,9 +17,10 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "lint:fsd": "steiger ./src",
-    "check": "npm run lint && npm run lint:fsd && npm run build",
+    "check": "npm run lint && npm run lint:fsd && npm run typecheck && npm run test:run && npm run build",
     "preview": "vite preview",
-    "postinstall": "simple-git-hooks"
+    "postinstall": "simple-git-hooks",
+    "build:analyze": "vite build --mode analyze"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -49,6 +50,7 @@
     "jsdom": "^29.1.1",
     "lint-staged": "^16.4.0",
     "msw": "^2.15.0",
+    "rollup-plugin-visualizer": "^7.1.1",
     "simple-git-hooks": "^2.14.0",
     "steiger": "^0.6.0",
     "typescript": "~6.0.2",
