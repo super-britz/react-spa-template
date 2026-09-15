@@ -18,8 +18,7 @@ export function HomePage() {
         <div>
           <h1>React SPA Template</h1>
           <p>
-            Edit <code>src/pages/home/ui/HomePage.tsx</code> and save to test{' '}
-            <code>HMR</code>
+            Edit <code>src/pages/home/ui/HomePage.tsx</code> and save to test <code>HMR</code>
           </p>
         </div>
         <button
@@ -42,15 +41,15 @@ export function HomePage() {
           <p>Your questions, answered</p>
           <ul>
             <li>
-              <a href="https://vite.dev/" target="_blank">
+              <a href="https://vite.dev/" target="_blank" rel="noopener">
                 <img className="logo" src={viteLogo} alt="" />
                 Explore Vite
               </a>
             </li>
             <li>
-              <a href="https://react.dev/" target="_blank">
+              <a href="https://react.dev/" target="_blank" rel="noopener">
                 <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
+                Learn React
               </a>
             </li>
           </ul>
@@ -63,7 +62,7 @@ export function HomePage() {
           <p>Join the Vite community</p>
           <ul>
             <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
+              <a href="https://github.com/vitejs/vite" target="_blank" rel="noopener">
                 <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#github-icon" />
                 </svg>
@@ -71,7 +70,7 @@ export function HomePage() {
               </a>
             </li>
             <li>
-              <a href="https://chat.vite.dev/" target="_blank">
+              <a href="https://chat.vite.dev/" target="_blank" rel="noopener">
                 <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#discord-icon" />
                 </svg>
@@ -79,7 +78,7 @@ export function HomePage() {
               </a>
             </li>
             <li>
-              <a href="https://x.com/vite_js" target="_blank">
+              <a href="https://x.com/vite_js" target="_blank" rel="noopener">
                 <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#x-icon" />
                 </svg>
@@ -87,7 +86,7 @@ export function HomePage() {
               </a>
             </li>
             <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
+              <a href="https://bsky.app/profile/vite.dev" target="_blank" rel="noopener">
                 <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#bluesky-icon" />
                 </svg>
