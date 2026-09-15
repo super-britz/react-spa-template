@@ -8,8 +8,8 @@
 模板当前是最小 FSD 结构（仅 `app`、`pages` 两层），工程底盘有 Oxlint、Steiger、TypeScript 和 CI，但没有路由、请求、测试和格式化能力。本次丰富的目标定位是四个方向的组合：
 
 1. **开箱即用的项目起点**：预装一套克制的默认技术栈，新项目 clone 下来即可开发。
-2. **保持极简、强化工程化**：每个依赖都有明确职责，不预装投机性依赖（如 UI 组件库、i18n）。
-3. **FSD 教学示范**：以文档「生长指南」承载，主分支不放跨层演示代码。
+2. **保持极简、强化工程化**：每个依赖都有明确职责和真实使用者，不预装投机性依赖（如 i18n、监控）。
+3. **FSD 教学示范**：以文档「生长指南」承载，主分支不放纯教学演示代码；出现的每层都有真实需求支撑。
 4. **新技术试验场**：作为后续用法，不在本次实施范围内。
 
 原 README「不预装路由、状态库和请求库」的立场调整为「预装经过挑选的最小基线」。
@@ -22,10 +22,12 @@
 | 全局客户端状态（Zustand） | 预装 zustand；store 归属各业务 Slice 的 `model`，不建全局 `src/store` 目录；服务端数据仍归 TanStack Query |
 | 路由库 | React Router v7（声明式模式），放弃 TanStack Router（生成步骤与学习成本高） |
 | HTTP 客户端 | axios 实例 + 拦截器，错误统一为 `ApiError` |
-| 样式 | Tailwind CSS v4（@tailwindcss/vite 插件，CSS-first 配置） |
-| Mock | MSW v2，仅 dev 环境启用 |
-| 工程化 | Vitest + Testing Library、Prettier、simple-git-hooks + lint-staged、CI 增强 |
-| 示例形态 | 主分支只留两个页面的最小示例；跨层完整示例放文档生长指南 + `example/full-fsd` 分支 |
+| 错误处理 | 全局 ErrorBoundary + 路由 errorElement + 404 页，三层兜底 |
+| 路径别名 | 预配置 `@/`（tsconfig paths + Vite alias + Oxlint/Steiger 同步） |
+| DX 基线 | React Query Devtools（dev-only）、路由级懒加载、`useDocumentTitle` hook |
+| 表单 | react-hook-form + zod + @hookform/resolvers 预装，登录页为示例 |
+| 认证骨架 | 预装：mock 登录态 + `entities/session` + ProtectedRoute + token 拦截器注入 |
+| E2E（Playwright）、监控（Sentry） | 不预装，扩展路径写入 growth-guide |
 
 ### 代做取舍（已确认）
 
@@ -42,6 +44,7 @@
 | HTTP | axios（`shared/api` 统一实例与拦截器） | v1 |
 | 客户端状态 | zustand | v5 |
 | 样式 | tailwindcss + @tailwindcss/vite + prettier-plugin-tailwindcss | v4 |
+| 表单 | react-hook-form + zod + @hookform/resolvers | 最新稳定 / v4 |
 | Mock | msw | v2 |
 | 测试 | vitest + @testing-library/react + @testing-library/jest-dom + jsdom | 最新稳定 |
 | 覆盖率 | @vitest/coverage-v8 | 与 vitest 配套 |
@@ -55,43 +58,71 @@
 src/
 ├── app/
 │   ├── entrypoint/
-│   │   ├── main.tsx            # 挂载；DEV 且未禁用 mock 时启用 MSW
-│   │   └── App.tsx             # 组合 Providers 与 Router
+│   │   ├── main.tsx            # 挂载；DEV 且未禁用 mock 时启用 MSW；注入 token getter
+│   │   └── App.tsx             # 组合 Providers、全局 ErrorBoundary 与 Router
 │   ├── providers/
-│   │   └── query-client.ts     # QueryClient 实例与默认配置
+│   │   └── query-client.ts     # QueryClient 实例与默认配置；Dev-only 挂 Query Devtools
 │   ├── routes/
-│   │   └── index.tsx           # 集中声明的路由表
+│   │   └── index.tsx           # 集中路由表：懒加载、ProtectedRoute、errorElement、404
+│   ├── ui/
+│   │   ├── error-boundary.tsx  # 全局渲染错误兜底
+│   │   └── route-error.tsx     # 路由 errorElement 展示
 │   └── styles/
 │       └── global.css          # @import "tailwindcss" + @theme 变量
 ├── pages/
-│   ├── home/
+│   ├── home/                   # 首页（公开路由，站内导航）
 │   │   ├── index.ts            # Public API: HomePage
-│   │   └── ui/HomePage.tsx     # 改造为 Tailwind，含站内导航
-│   └── demo/
-│       ├── index.ts            # Public API: DemoPage
-│       ├── api/fetchDemoData.ts
-│       ├── model/
-│       │   ├── useDemoData.ts  # useQuery 封装
-│       │   └── demo-store.ts   # Zustand store（页面级客户端状态示例）
-│       └── ui/DemoPage.tsx     # loading / error / success 完整状态展示
+│   │   └── ui/HomePage.tsx
+│   ├── demo/                   # 受保护路由：完整演示 请求→Query→MSW→Zustand 链路
+│   │   ├── index.ts            # Public API: DemoPage
+│   │   ├── api/fetch-demo-data.ts
+│   │   ├── model/
+│   │   │   ├── use-demo-data.ts    # useQuery 封装
+│   │   │   └── demo-store.ts       # Zustand store（页面级客户端状态示例）
+│   │   └── ui/DemoPage.tsx     # loading / error / success 完整状态展示
+│   ├── login/                  # 登录页（RHF + zod 表单示例）
+│   │   ├── index.ts            # Public API: LoginPage
+│   │   └── ui/LoginPage.tsx
+│   └── not-found/
+│       ├── index.ts            # Public API: NotFoundPage
+│       └── ui/NotFoundPage.tsx
+├── entities/
+│   └── session/                # 因认证骨架的真实需求出现（非预建）
+│       ├── index.ts            # Public API
+│       ├── api/auth.ts         # login/logout 请求（DTO 映射）
+│       └── model/session-store.ts  # Zustand + persist 会话状态
 ├── shared/
 │   ├── api/
-│   │   ├── http-client.ts      # axios 实例：baseURL、拦截器、统一 ApiError
+│   │   ├── http-client.ts      # axios 实例：baseURL、拦截器、ApiError、setAuthTokenGetter
 │   │   └── index.ts
-│   └── ui/                     # 仅放真实被用到的组件（如加载态）
+│   ├── lib/
+│   │   └── use-document-title.ts   # 页面 title 设置
+│   └── ui/                     # Button、Input、ErrorText 等（Tailwind，真实被用到）
 └── mocks/                      # 开发基础设施，非 FSD 层
     ├── browser.ts              # setupWorker
-    └── handlers.ts             # 拦截 /api/*，含人为延迟
+    └── handlers.ts             # 拦截 /api/*（demo + auth 端点，DTO 形状返回，人为延迟）
 ```
 
 根目录新增：`.env.example`（`VITE_API_BASE_URL`、`VITE_DISABLE_MOCK`）、`.prettierrc`、`.editorconfig`。
+
+跨层 import 统一使用 `@/` 别名（如 `@/pages/home`、`@/shared/api`）；Slice 内部使用相对路径。
 
 ## 模块设计
 
 ### 路由
 
-- 路由表集中在 `app/routes`，页面 Slice 不感知自己被谁引用，符合 `app → pages` 依赖方向。
+- 路由表集中在 `app/routes`，页面 Slice 不感知自己被谁引用，符合依赖方向。
+- 页面组件经 `React.lazy` + 动态 `import()` 懒加载（经 Slice Public API 导入），路由级代码分割开箱即用。
 - `App.tsx` 组合 QueryClientProvider 与 RouterProvider；Provider 装配统一放 `app/providers`。
+- 每个页面用 `useDocumentTitle('...')`（`shared/lib`）设置标题。
+
+### 错误处理（三层兜底）
+
+1. **全局 ErrorBoundary**（`app/ui/error-boundary.tsx`）：包裹 RouterProvider，兜住任何渲染崩溃，避免白屏。
+2. **路由 errorElement**（`app/ui/route-error.tsx`）：挂在根路由，兜住路由加载与页面内 throw 的错误，展示错误信息与「返回首页」。
+3. **404 页**（`pages/not-found`）：路由表通配路由。
+
+请求层错误已由拦截器归一为 `ApiError`，demo 页面展示 error 态；ErrorBoundary 与 errorElement 是渲染层兜底，两者互补。
 
 ### 请求链路
 
@@ -106,11 +137,24 @@ src/
 - 不使用自定义 `transformResponse` 做映射：共享实例上的 transform 无法按 Slice 区分、会让 `shared` 认识业务 DTO；且替换默认行为后需自行 `JSON.parse`，可读性与可调试性差。
 - demo 页面的请求函数按此模式实现作为示例；MSW handler 返回的 mock 数据采用后端 DTO 形状（如 snake_case），让映射逻辑真实生效。
 
+### 认证与会话
+
+- **`entities/session`**：会话是跨页面的业务概念，是 entities 层的真实需求。`model/session-store.ts` 用 Zustand + persist（localStorage）保存 `{ token, user }`，提供 login/logout 动作；`api/auth.ts` 提供 login/logout 请求（含 DTO 映射）。
+- **token 注入拦截器**：`shared/api` 不能反向依赖 `entities`（依赖方向），因此 http-client 暴露 `setAuthTokenGetter(getter)`，由 `app/entrypoint` 装配时注入（从 session store 读取）；请求拦截器据此附加 `Authorization: Bearer`。这是 FSD 处理 shared 层需要业务数据的标准手法。
+- **ProtectedRoute**：路由守卫组件放 `app/routes`（路由组合属于 app 职责），未登录访问受保护路由重定向 `/login`。demo 页挂为受保护路由以演示。
+- **MSW mock 端点**：`POST /api/auth/login`（校验固定演示账号，返回 token + user DTO）、`POST /api/auth/logout`。
+
+### 表单
+
+- 预装 react-hook-form + zod + @hookform/resolvers，不额外封装。
+- 登录页（`pages/login`）即表单示例：zod schema 校验（必填、长度）、字段级错误展示、提交 loading、API 失败经 `setError('root', …)` 回填表单顶部。
+- 表单基础件（Input、Button、ErrorText）放 `shared/ui`，用 Tailwind 实现，供登录页与 demo 页复用。
+
 ### 客户端状态（Zustand）
 
 - 预装 zustand，但**不建全局 `src/store` 目录**：store 属于拥有该状态的 Slice，放在该 Slice 的 `model` Segment，由各组件用 selector 订阅。
-- demo 页面提供一个页面级 store 示例（如列表展示偏好），演示 `create` + selector 订阅的最小模式；该状态在路由切换后保留，体现客户端状态与服务端缓存（Query）的分工。
-- 服务端数据一律走 TanStack Query，不复制进 store；跨页面状态的提升路径（下沉到业务 Slice 的 `model` 再由高层组合）写入 growth-guide。
+- 两个真实示例：`pages/demo/model/demo-store.ts`（页面级展示偏好，路由切换后保留）；`entities/session/model/session-store.ts`（跨页面会话，persist 持久化）。
+- 服务端数据一律走 TanStack Query，不复制进 store；跨页面状态的提升路径写入 growth-guide。
 
 ### 样式
 
@@ -121,8 +165,8 @@ src/
 ### 测试
 
 - Vitest（jsdom）+ Testing Library，配置与 `vite.config.ts` 共享 plugins。
-- 两类示例测试：`http-client` 单元测试（响应解析与错误路径）；demo 页面组件测试（RTL 渲染 + MSW 拦截，验证 loading → success 与 error 态）。
-- 命令：`npm run test`（watch 之外的 CI 模式用 `test:run`）、`npm run test:coverage`。
+- 示例测试三类：`http-client` 单元测试（拦截器错误归一）；demo 页面组件测试（RTL 渲染 + MSW 拦截，验证 loading → success 与 error 态）；登录表单测试（zod 校验错误展示与受保护路由跳转）。
+- 命令：`npm run test`（本地 watch 之外的 CI 模式用 `test:run`）、`npm run test:coverage`。
 
 ### 格式化与钩子
 
@@ -137,28 +181,31 @@ src/
 
 ## 文档与分支
 
-- **README.md**：重写定位（克制的开箱即用基线）、命令、目录、从模板开始的步骤。
-- **docs/architecture.md**：更新路由装配位置、请求链路约定、前后端数据映射约定、`src/mocks` 定位、测试约定、check 命令构成。
-- **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，含跨页面客户端状态（Zustand store）的提升路径，承载教学示范职责。
-- **AGENTS.md**：同步新增命令、mock 目录规则、样式约定。
+- **README.md**：重写定位（克制的开箱即用基线）、命令、目录、从模板开始的步骤、SPA 静态托管 rewrite 注意事项。
+- **docs/architecture.md**：更新路由装配位置、请求链路约定、前后端数据映射约定、认证与会话结构、`src/mocks` 定位、测试约定、check 命令构成。
+- **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，含跨页面客户端状态（Zustand store）的提升路径、E2E 与监控的扩展指引，承载教学示范职责。
+- **AGENTS.md**：同步新增命令、别名规则、mock 目录规则、样式约定、认证相关规则。
 - **`example/full-fsd` 分支**（实施完成后单独进行）：基于主分支追加跨层完整示例（如 posts 列表/详情共用 entities/post 与 features），主分支保持纯净。
 
 ## 实施顺序
 
-1. Tailwind 接入与现有页面样式迁移。
-2. React Router 接入，路由表落到 `app/routes`。
-3. 请求链路与客户端状态：axios 实例（http-client）→ demo 页面（api/model/ui，含 Zustand store 示例）→ MSW 与 .env.example。
-4. Vitest + Testing Library 接入，补两类示例测试。
-5. Prettier、editorconfig、git hooks。
-6. CI 与 `check` 命令更新、bundle 分析脚本。
-7. README、architecture.md、AGENTS.md 更新，新增 growth-guide.md。
-8. （后续单独任务）创建 `example/full-fsd` 分支。
+1. 路径别名 `@/` 与 Tailwind 接入，现有页面样式迁移。
+2. React Router 接入：路由表、懒加载、404、errorElement、全局 ErrorBoundary、`useDocumentTitle`。
+3. 请求链路与页面级状态：axios 实例（http-client）→ demo 页面（api/model/ui，含 Zustand store 示例）→ MSW 与 .env.example。
+4. 认证骨架与表单：`entities/session`、token 注入、ProtectedRoute、登录页（RHF + zod）、`shared/ui` 基础件。
+5. Vitest + Testing Library 接入，补三类示例测试。
+6. Prettier、editorconfig、git hooks。
+7. CI 与 `check` 命令更新、bundle 分析脚本。
+8. README、architecture.md、AGENTS.md 更新，新增 growth-guide.md。
+9. （后续单独任务）创建 `example/full-fsd` 分支。
 
 ## 验收标准
 
 - `npm run check` 全绿（lint、FSD 架构检查、类型、测试、构建）。
-- `npm run dev` 启动后：首页可经导航进入 demo 页，demo 页展示 MSW 驱动的 loading → success/error 完整状态。
-- 断网或禁用 mock 时错误路径可见且类型正确（`ApiError`）。
+- `npm run dev` 启动后：首页可经导航进入各页；未登录访问 demo 跳转登录页，用演示账号登录后进入；demo 页展示 MSW 驱动的 loading → success/error 完整状态；登出后再次访问受保护路由被重定向。
+- 登录表单：空提交与非法输入显示 zod 校验错误；错误账号显示 API 回填错误。
+- 访问未知路由显示 404 页；demo 页可触发 errorElement/全局 ErrorBoundary 兜底路径。
 - demo 页的 Zustand 状态在路由切换后保留，且 store 中没有复制任何服务端数据。
-- `git commit` 触发 pre-commit 自动 lint + format。
+- 断网或禁用 mock 时错误路径可见且类型正确（`ApiError`）。
+- 跨层 import 均为 `@/` 别名；`git commit` 触发 pre-commit 自动 lint + format。
 - 文档与实际结构一致，无「不预装路由」类过时表述。
