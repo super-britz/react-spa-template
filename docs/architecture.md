@@ -8,137 +8,104 @@
 Layer → Slice → Segment
 ```
 
-当前业务只有一个页面，因此只使用实际需要的 `app` 和 `pages` Layer。FSD 不要求创建所有 Layer；没有真实代码时，不创建空的 `widgets`、`features`、`entities` 或 `shared`。
+依赖方向自上而下：`app → pages → widgets → features → entities → shared`。当前业务使用 `app`、`pages`、`shared` 三层；`widgets`、`features`、`entities` 不预建，建立时机见 [growth-guide](growth-guide.md)。
 
 ## 当前目录
 
 ```text
 src/
-├── app/                         # App Layer，不包含 Slice
-│   ├── entrypoint/              # 应用入口 Segment
-│   │   ├── main.tsx             # 挂载 React
-│   │   └── App.tsx              # 组合页面
-│   └── styles/                  # 全局样式 Segment
-│       └── global.css
-└── pages/                       # Pages Layer
-    └── home/                    # home Slice
-        ├── index.ts             # Slice Public API
-        └── ui/                  # UI Segment
-            ├── HomePage.tsx
-            ├── home-page.css
-            └── ...              # 首页专属图片
+├── app/                     # App Layer，不包含 Slice
+│   ├── entrypoint/          # main.tsx（挂载、dev 启用 MSW）、App.tsx（组装）
+│   ├── init/                # 应用初始化：QueryClient、全局 ErrorBoundary
+│   ├── routes/              # 路由表、站点布局（AppLayout）、路由错误展示
+│   └── styles/              # global.css（Tailwind 入口与 @theme 主题）
+├── pages/                   # Pages Layer
+│   ├── home/                # 首页 Slice
+│   ├── demo/                # Demo Slice：api / model / ui
+│   └── not-found/           # 404 Slice
+├── shared/                  # Shared Layer，无业务语义，不包含 Slice
+│   ├── api/                 # axios 实例（http-client）与 ApiError
+│   ├── lib/                 # useDocumentTitle 等基础工具
+│   └── ui/                  # Button、Input、ErrorText 基础组件
+├── mocks/                   # MSW handlers（开发基础设施，非 FSD 层）
+└── test/                    # Vitest 全局 setup（非 FSD 层）
 ```
 
-根目录的 `public/` 由 Vite 直接管理，不属于 FSD Layer；favicon、无需构建处理的静态文件可以保留在这里。
+`src/mocks/`、`src/test/`、`src/vite-env.d.ts` 是工具链目录，定位同 `public/`，不属于 FSD 层，Steiger 不检查它们。`public/` 由 Vite 直接管理。
 
-## 三层结构的职责
+## 路由与 Provider 装配
 
-- **Layer** 表示责任和依赖高度。当前依赖方向是 `app → pages`。
-- **Slice** 按产品或业务含义划分。`home` 是一个页面 Slice。
-- **Segment** 按技术目的组织 Slice 内部代码，例如 `ui`、`api`、`model`、`lib`、`config`。
+- 路由表集中在 `app/routes/index.tsx`；页面组件经 Slice Public API 懒加载（`React.lazy` + 动态 `import`），实现路由级代码分割。
+- 页面 Slice 不感知自己被谁引用；新增页面只需建 Slice 并在路由表注册。
+- Provider 装配在 `app/entrypoint/App.tsx`：全局 ErrorBoundary → QueryClientProvider（含 dev-only Devtools）→ RouterProvider。
+- 站点框架（header 导航 + Outlet）是 `app/routes/app-layout.tsx`，属于 app 层的装配职责。
 
-页面是 SPA 中天然的业务边界。首页的 UI、样式、状态和专属图片因同一种页面需求变化，因此共同保留在 `pages/home/ui`。当前计数状态只影响首页，继续使用组件局部状态。
+## 错误处理（三层兜底）
+
+1. **全局 ErrorBoundary**（`app/init/error-boundary.tsx`）：包裹 RouterProvider，兜住任何渲染崩溃。
+2. **路由 errorElement**（`app/routes/route-error.tsx`）：兜住路由加载与页面内 throw 的错误。
+3. **404 页**（`pages/not-found`）：路由表通配路由。
+
+请求层错误由 axios 拦截器归一为 `ApiError`，页面按 Query 的 error 态展示；渲染层兜底与请求层归一互补。
+
+## 请求链路与数据映射
+
+- `shared/api/http-client.ts` 导出统一 axios 实例：baseURL 读 `VITE_API_BASE_URL`、超时 10s；响应拦截器把非 2xx 与网络错误归一为 `ApiError`（status、message、原始错误）。
+- **拦截器只做协议级、全局的转换**（错误归一、后端统一信封的拆包）。
+- **DTO → 领域类型的映射显式写在各 Slice `api` Segment 请求函数的函数体内**。后端 DTO（命名风格、时间戳、信封等）只允许出现在该文件；`model`、`ui` 与 Public API 只使用领域类型。后端契约变化时影响面收敛在单个文件。
+- 不使用自定义 `transformResponse` 做映射：共享实例上的 transform 无法按 Slice 区分、会让 shared 认识业务 DTO，且替换默认行为后需自行 `JSON.parse`。
+- Query hook 放 Slice 的 `model`，queryKey 以 Slice 名为前缀（如 `['demo', 'data']`）。
+- MSW handler（`src/mocks/handlers.ts`）拦截 `/api/*`，返回后端 DTO 形状的数据并带人为延迟，让映射与 loading/error 态真实可观察。
 
 ## 依赖与 Public API 规则
 
 1. 高层只能依赖更低层：`app → pages → widgets → features → entities → shared`。
-2. 同一 Layer 的不同 Slice 不能互相依赖，例如一个 Page 不能导入另一个 Page。
-3. 每个 Slice 必须提供 Public API，通常是 Slice 根目录的 `index.ts`。
-4. Slice 外部只能通过 Public API 导入，不能引用其 `ui`、`api`、`model` 等内部路径。
-5. 同一 Slice 内部使用相对路径，可以直接引用本 Slice 的其他文件。
-6. `app` 和 `shared` 不包含 Slice，直接按 Segment 组织。
-7. 不增加自定义顶层 Layer，也不创建没有实际内容的架构目录。
+2. 同一 Layer 的不同 Slice 不能互相依赖。
+3. 每个 Slice 提供根目录 `index.ts` 作为 Public API；外部只能从 Public API 导入，不能引用其 `ui`、`api`、`model` 等内部路径。
+4. 跨层 import 统一使用 `@/` 别名；Slice 内部使用相对路径。
+5. `app` 和 `shared` 不包含 Slice，直接按 Segment 组织。
+6. 不增加自定义顶层 Layer，也不创建没有实际内容的架构目录。
 
-例如，App 只能这样使用首页：
+## 客户端状态（Zustand）
 
-```ts
-import { HomePage } from '../../pages/home'
-```
+- store 属于拥有该状态的 Slice，放在其 `model` Segment，组件用 selector 订阅；不建全局 `src/store` 目录。
+- 示例：`pages/demo/model/demo-store.ts`（页面级展示偏好，路由切换后保留）。
+- 服务端数据一律走 TanStack Query，不复制进 store。跨页面状态的提升顺序：
 
-不能绕过 Public API：
+1. 只影响一个组件：组件局部状态。
+2. 只影响一个页面：Page Slice 的 `model`。
+3. 可以从已有数据计算：不保存，直接派生。
+4. 需要刷新后保留或支持分享：优先考虑 URL。
+5. 来自服务端：服务端数据缓存方案（Query）。
+6. 真正跨越多个边界的客户端状态：放入最符合业务含义的下层 Slice，再由高层组合。
 
-```ts
-import { HomePage } from '../../pages/home/ui/HomePage'
-```
+## 样式
 
-## 静态资源规则
+- Tailwind v4 经 `@tailwindcss/vite` 接入；主题定制写在 `global.css` 的 `@theme`；class 排序由 Biome 的 `useSortedClasses` 规则处理。
+- 静态资源归属：只被一个 Slice 使用就放在该 Slice 内；被多个 Slice 复用且无业务含义进 `shared/ui`；全局样式与字体进 `app/styles` 或 `public/`。
 
-静态资源和代码遵循同样的归属原则：
+## 测试
 
-1. 只被一个 Slice 使用：放在该 Slice 内，靠近使用它的 Segment。
-2. 被多个 Slice 复用且没有具体业务含义：放入 `shared/ui`。
-3. 全局样式、字体等应用级资源：放入 `app/styles`、`app/fonts` 或 `public/`。
-4. 不建立按文件类型集中所有业务资源的顶层 `src/assets`。
+- Vitest（jsdom）+ Testing Library；配置与 `vite.config.ts` 共享；全局 setup 在 `src/test/setup.ts`（jest-dom 断言 + MSW server 生命周期）。
+- 测试文件与被测文件同目录。请求函数的测试用 MSW `server.use` 覆盖端点验证映射与错误路径；组件测试经 `findBy*` 等待异步。
 
 ## 增加新页面
 
-每个独立页面默认建立一个 Page Slice，并提供 Public API：
-
 ```text
 pages/
-├── home/
-│   ├── index.ts
-│   └── ui/
-├── orders-list/
-│   ├── index.ts
-│   └── ui/
-└── order-details/
-    ├── index.ts
-    └── ui/
+└── orders-list/
+    ├── index.ts            # export { OrdersListPage }
+    ├── api/fetchOrders.ts  # 请求 + DTO 映射
+    ├── model/useOrders.ts  # useQuery hook（+ 按需 store）
+    └── ui/OrdersListPage.tsx
 ```
 
-页面专属的请求放入该 Slice 的 `api`，页面模型放入 `model`。不要先建立全局的 `components`、`hooks` 或 `services` 再把页面代码拆散。
+再到 `app/routes/index.tsx` 注册懒加载路由。不要先建全局 `components`、`hooks`、`services` 再拆散页面代码。
 
-## 增加 Feature
+## 变更验收
 
-Feature 表示为用户提供业务价值、并在多个页面复用的交互。只有真实需求出现时才创建，例如：
-
-```text
-features/
-└── cancel-order/
-    ├── index.ts
-    ├── ui/
-    │   └── CancelOrderButton.tsx
-    ├── model/
-    │   └── useCancelOrder.ts
-    └── api/
-        └── cancelOrder.ts
+```bash
+npm run check
 ```
 
-只在一个页面使用的交互仍可留在 Page Slice；FSD 不要求把每个用户动作都提前拆成 Feature。
-
-## 增加 Shared
-
-`shared` 只承载不依赖具体业务 Slice 的基础能力，并直接按 Segment 组织：
-
-```text
-shared/
-├── ui/       # UI Kit
-├── api/      # HTTP Client
-├── lib/      # 单一目的的基础库
-└── config/   # 环境与全局配置
-```
-
-`shared` 的每个 Segment 应提供自己的 Public API。带有 `Order`、`Product` 等具体业务含义的代码，应先判断属于 `entities`、`features` 还是页面，而不是因为复用就直接放入 `shared`。
-
-## 状态放置顺序
-
-1. 只影响一个组件：组件局部状态。
-2. 只影响一个页面：Page Slice 的 `model` 或 `ui`。
-3. 可以从已有数据计算：不保存，直接派生。
-4. 需要刷新后保留或支持分享：优先考虑 URL。
-5. 来自服务端：使用服务端数据缓存方案，不重复复制到全局 Store。
-6. 真正跨越多个边界的客户端状态：放入最符合业务含义的下层 Slice，再由高层组合。
-
-## 新增代码前检查
-
-1. 它属于哪个 Layer？
-2. 它表达哪个业务 Slice？
-3. 它在 Slice 中承担什么技术目的？
-4. 外部是否只通过 Public API 使用它？
-5. 依赖是否只指向严格更低的 Layer？
-6. 资源是否放在最接近实际使用位置的地方？
-
-项目保持严格的 FSD 边界，同时继续按真实需求渐进增加 Layer 和 Slice。
-
-运行 `npm run lint:fsd` 可以单独检查 FSD 规则；`npm run check` 会将架构检查与代码、类型和生产构建检查一起执行。
+依次执行：Biome（lint + 格式 + import 排序）、Steiger FSD 架构检查、TypeScript 类型检查、Vitest 测试、生产构建，必须全部通过。pre-commit 钩子只对暂存文件执行 Biome；类型与测试交给 CI。若变更引入新的 Layer、Slice、公共边界或状态策略，同步更新本文件和 README 的目录说明。
