@@ -23,7 +23,8 @@
 | 路由库 | React Router v7（声明式模式），放弃 TanStack Router（生成步骤与学习成本高） |
 | HTTP 客户端 | axios 实例 + 拦截器，错误统一为 `ApiError` |
 | 错误处理 | 全局 ErrorBoundary + 路由 errorElement + 404 页，三层兜底 |
-| 路径别名 | 预配置 `@/`（tsconfig paths + Vite alias + Oxlint/Steiger 同步） |
+| 路径别名 | 预配置 `@/`（tsconfig paths + Vite alias + Biome/Steiger 同步） |
+| Lint 与格式化 | Biome 单工具替代 Oxlint + Prettier：新项目迁移成本近零、单配置单命令、formatter 成熟（v2.5.x）；oxc（Oxlint + Oxfmt，Vite+ 路线）作为趋势备选，考察记录写入 growth-guide |
 | DX 基线 | React Query Devtools（dev-only）、路由级懒加载、`useDocumentTitle` hook |
 | 表单 | react-hook-form + zod + @hookform/resolvers 预装，demo 页 FeedbackForm 为示例 |
 | 认证骨架 | 不预装；`entities/session`、ProtectedRoute、token 拦截器注入的扩展路径写入 growth-guide |
@@ -43,12 +44,12 @@
 | 服务端状态 | @tanstack/react-query | v5 |
 | HTTP | axios（`shared/api` 统一实例与拦截器） | v1 |
 | 客户端状态 | zustand | v5 |
-| 样式 | tailwindcss + @tailwindcss/vite + prettier-plugin-tailwindcss | v4 |
+| 样式 | tailwindcss + @tailwindcss/vite | v4 |
 | 表单 | react-hook-form + zod + @hookform/resolvers | 最新稳定 / v4 |
 | Mock | msw | v2 |
 | 测试 | vitest + @testing-library/react + @testing-library/jest-dom + jsdom | 最新稳定 |
 | 覆盖率 | @vitest/coverage-v8 | 与 vitest 配套 |
-| 格式化 | prettier | 最新稳定 |
+| Lint + 格式化 | biome（含 import 排序、Tailwind class 排序、类型感知规则） | v2 |
 | Git 钩子 | simple-git-hooks + lint-staged | 最新稳定 |
 | Bundle 分析 | rollup-plugin-visualizer（本地脚本用） | 最新稳定 |
 
@@ -99,7 +100,7 @@ src/
     └── handlers.ts             # 拦截 /api/*（demo 数据与 feedback 端点，DTO 形状，人为延迟）
 ```
 
-根目录新增：`.env.example`（`VITE_API_BASE_URL`、`VITE_DISABLE_MOCK`）、`.prettierrc`、`.editorconfig`。
+根目录新增：`.env.example`（`VITE_API_BASE_URL`、`VITE_DISABLE_MOCK`）、`biome.json`、`.editorconfig`；移除 `.oxlintrc.json` 与 oxlint 依赖。
 
 跨层 import 统一使用 `@/` 别名（如 `@/pages/home`、`@/shared/api`）；Slice 内部使用相对路径。
 
@@ -150,7 +151,7 @@ src/
 ### 样式
 
 - Tailwind v4 经由 Vite 插件接入，无需 `tailwind.config`；主题定制（品牌色等）写在 `global.css` 的 `@theme`。
-- 现有 `home-page.css` 及内联样式迁移为 Tailwind class；prettier-plugin-tailwindcss 负责 class 排序。
+- 现有 `home-page.css` 及内联样式迁移为 Tailwind class；class 排序由 Biome 的 `useSortedClasses` 规则处理。
 - 静态资源归属规则不变（页面专属资源留在页面 Slice）。
 
 ### 测试
@@ -159,14 +160,14 @@ src/
 - 示例测试三类：`http-client` 单元测试（拦截器错误归一）；demo 页面组件测试（RTL 渲染 + MSW 拦截，验证 loading → success 与 error 态）；FeedbackForm 表单测试（zod 校验错误展示与提交失败回填）。
 - 命令：`npm run test`（本地 watch 之外的 CI 模式用 `test:run`）、`npm run test:coverage`。
 
-### 格式化与钩子
+### Lint、格式化与钩子
 
-- Prettier 管格式，Oxlint 管质量，职责不重叠。
-- simple-git-hooks 配 pre-commit：lint-staged 对暂存文件执行 `oxlint --fix` 与 `prettier --write`。typecheck 与 build 不进钩子，留给 CI。
+- Biome 单工具承担 lint 与格式化（替代 Oxlint + Prettier），import 排序与 Tailwind class 排序内置；配置集中于 `biome.json`，`.oxlintrc.json` 移除。
+- simple-git-hooks 配 pre-commit：lint-staged 对暂存文件执行 `biome check --fix`（lint、format、import 排序一次完成）。typecheck 与 build 不进钩子，留给 CI。
 
 ### CI
 
-- `npm run check` 升级为 `lint && lint:fsd && typecheck && test:run && build`。
+- `npm run check` 升级为：Biome 检查（lint + format + import 排序）、Steiger FSD 架构检查、typecheck、test:run 与 build 的串行组合（具体 script 名实施时定）。
 - CI 增加 `test:coverage`，覆盖率报告上传为 artifact。
 - `npm run build:analyze` 使用 rollup-plugin-visualizer，仅本地脚本，不做 CI 门槛。
 
@@ -174,25 +175,25 @@ src/
 
 - **README.md**：重写定位（克制的开箱即用基线）、命令、目录、从模板开始的步骤、SPA 静态托管 rewrite 注意事项。
 - **docs/architecture.md**：更新路由装配位置、请求链路约定、前后端数据映射约定、`src/mocks` 定位、测试约定、check 命令构成。
-- **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，含跨页面客户端状态（Zustand store）的提升路径、认证骨架（`entities/session`、ProtectedRoute、token 注入）、E2E 与监控的扩展指引，承载教学示范职责。
-- **AGENTS.md**：同步新增命令、别名规则、mock 目录规则、样式约定。
+- **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，含跨页面客户端状态（Zustand store）的提升路径、认证骨架（`entities/session`、ProtectedRoute、token 注入）、E2E 与监控的扩展指引，以及工具链考察记录（为何选 Biome、何时重新评估 oxc/Vite+），承载教学示范职责。
+- **AGENTS.md**：同步工具链变更（Biome 替代 Oxlint）、新增命令、别名规则、mock 目录规则、样式约定。
 - **`example/full-fsd` 分支**（实施完成后单独进行）：基于主分支追加跨层完整示例（如 posts 列表/详情共用 entities/post 与 features），主分支保持纯净。
 
 ## 实施顺序
 
-1. 路径别名 `@/` 与 Tailwind 接入，现有页面样式迁移。
+1. 路径别名 `@/`、Biome 工具链迁移（替换 Oxlint）与 Tailwind 接入，现有页面样式迁移。
 2. React Router 接入：路由表、懒加载、404、errorElement、全局 ErrorBoundary、`useDocumentTitle`。
 3. 请求链路与页面级状态：axios 实例（http-client）→ demo 页面（api/model/ui，含 Zustand store 示例）→ MSW 与 .env.example。
 4. 表单：RHF + zod 接入、`shared/ui` 基础件、FeedbackForm 与 feedback mock 端点。
 5. Vitest + Testing Library 接入，补三类示例测试。
-6. Prettier、editorconfig、git hooks。
+6. editorconfig 与 git hooks（simple-git-hooks + lint-staged 接 biome check）。
 7. CI 与 `check` 命令更新、bundle 分析脚本。
 8. README、architecture.md、AGENTS.md 更新，新增 growth-guide.md。
 9. （后续单独任务）创建 `example/full-fsd` 分支。
 
 ## 验收标准
 
-- `npm run check` 全绿（lint、FSD 架构检查、类型、测试、构建）。
+- `npm run check` 全绿（Biome lint 与格式检查、FSD 架构检查、类型、测试、构建）。
 - `npm run dev` 启动后：首页可经导航进入 demo 页；demo 页展示 MSW 驱动的 loading → success/error 完整状态。
 - FeedbackForm：空提交与非法输入显示 zod 校验错误；含 `fail` 关键字的提交展示 API 失败回填；正常提交展示成功态。
 - 访问未知路由显示 404 页；可触发 errorElement 与全局 ErrorBoundary 兜底路径。
