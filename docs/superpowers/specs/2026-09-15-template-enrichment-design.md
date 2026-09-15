@@ -61,12 +61,12 @@ src/
 │   ├── entrypoint/
 │   │   ├── main.tsx            # 挂载；DEV 且未禁用 mock 时启用 MSW
 │   │   └── App.tsx             # 组合 Providers、全局 ErrorBoundary 与 Router
-│   ├── providers/
-│   │   └── query-client.ts     # QueryClient 实例与默认配置；Dev-only 挂 Query Devtools
-│   ├── routes/
-│   │   └── index.tsx           # 集中路由表：懒加载、errorElement、404
-│   ├── ui/
-│   │   ├── error-boundary.tsx  # 全局渲染错误兜底
+│   ├── init/                   # 应用初始化装配（Steiger 禁止 app 层出现 ui/providers segment，故用按目的命名的 init）
+│   │   ├── query-client.ts     # QueryClient 实例与默认配置
+│   │   └── error-boundary.tsx  # 全局渲染错误兜底
+│   ├── routes/                 # 集中路由表与路由装配
+│   │   ├── index.tsx           # 路由表：懒加载、errorElement、404
+│   │   ├── app-layout.tsx      # 站点布局（header 导航 + Outlet + Suspense）
 │   │   └── route-error.tsx     # 路由 errorElement 展示
 │   └── styles/
 │       └── global.css          # @import "tailwindcss" + @theme 变量
@@ -115,9 +115,11 @@ src/
 
 ### 错误处理（三层兜底）
 
-1. **全局 ErrorBoundary**（`app/ui/error-boundary.tsx`）：包裹 RouterProvider，兜住任何渲染崩溃，避免白屏。
-2. **路由 errorElement**（`app/ui/route-error.tsx`）：挂在根路由，兜住路由加载与页面内 throw 的错误，展示错误信息与「返回首页」。
+1. **全局 ErrorBoundary**（`app/init/error-boundary.tsx`）：包裹 RouterProvider，兜住任何渲染崩溃，避免白屏。
+2. **路由 errorElement**（`app/routes/route-error.tsx`）：挂在根路由，兜住路由加载与页面内 throw 的错误，展示错误信息与「返回首页」。
 3. **404 页**（`pages/not-found`）：路由表通配路由。
+
+> 实施调整：原设计将三者放在 `app/ui`，被 Steiger 的 `no-ui-in-app` 与 `segments-by-purpose` 规则否决，最终落位 `app/routes`（布局与路由错误）和 `app/init`（全局兜底与 QueryClient）。
 
 请求层错误已由拦截器归一为 `ApiError`，demo 页面展示 error 态；ErrorBoundary 与 errorElement 是渲染层兜底，两者互补。
 
