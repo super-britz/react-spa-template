@@ -18,7 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "lint:fsd": "steiger ./src",
     "check": "npm run lint && npm run lint:fsd && npm run build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "simple-git-hooks"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -46,7 +47,9 @@
     "@vitejs/plugin-react": "^6.1.0",
     "@vitest/coverage-v8": "^5.0.1",
     "jsdom": "^29.1.1",
+    "lint-staged": "^16.4.0",
     "msw": "^2.15.0",
+    "simple-git-hooks": "^2.14.0",
     "steiger": "^0.6.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
@@ -55,6 +58,14 @@
   "msw": {
     "workerDirectory": [
       "public"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,css,json,md}": [
+      "biome check --write --no-errors-on-unmatched"
     ]
   }
 }
