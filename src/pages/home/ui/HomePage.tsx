@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { useDocumentTitle } from '@/shared/lib'
+
 import heroImg from './hero.png'
 import reactLogo from './react.svg'
 import viteLogo from './vite.svg'
@@ -26,6 +28,7 @@ const socials = [
 
 export function HomePage() {
   const [count, setCount] = useState(0)
+  useDocumentTitle('React SPA Template')
 
   return (
     <main className="mx-auto flex w-full flex-1 flex-col items-center justify-center gap-6 px-5 py-8">
