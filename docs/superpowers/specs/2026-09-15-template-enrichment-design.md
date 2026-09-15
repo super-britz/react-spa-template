@@ -99,6 +99,13 @@ src/
 - 页面请求函数放各自 Slice 的 `api` Segment，`useQuery` hook 放 `model` Segment，queryKey 以 Slice 名为前缀。
 - MSW handler 拦截 `/api/*` 并加人为延迟（约 800ms），使 demo 页面可观察 loading 与错误态。
 
+### 前后端数据映射
+
+- **职责分界**：axios 拦截器只做协议级、全局的转换（错误归一 `ApiError`、后端统一信封的拆包）；DTO → 领域类型的映射显式写在各 Slice `api` Segment 请求函数的函数体内。
+- 后端 DTO（命名风格、时间戳字符串、分页信封等）只允许出现在 Slice 的 `api` Segment；`model`、`ui` 与 Public API 只使用领域类型。后端契约变化时，影响面收敛在单个请求函数文件内。
+- 不使用自定义 `transformResponse` 做映射：共享实例上的 transform 无法按 Slice 区分、会让 `shared` 认识业务 DTO；且替换默认行为后需自行 `JSON.parse`，可读性与可调试性差。
+- demo 页面的请求函数按此模式实现作为示例；MSW handler 返回的 mock 数据采用后端 DTO 形状（如 snake_case），让映射逻辑真实生效。
+
 ### 客户端状态（Zustand）
 
 - 预装 zustand，但**不建全局 `src/store` 目录**：store 属于拥有该状态的 Slice，放在该 Slice 的 `model` Segment，由各组件用 selector 订阅。
@@ -131,7 +138,7 @@ src/
 ## 文档与分支
 
 - **README.md**：重写定位（克制的开箱即用基线）、命令、目录、从模板开始的步骤。
-- **docs/architecture.md**：更新路由装配位置、请求链路约定、`src/mocks` 定位、测试约定、check 命令构成。
+- **docs/architecture.md**：更新路由装配位置、请求链路约定、前后端数据映射约定、`src/mocks` 定位、测试约定、check 命令构成。
 - **docs/growth-guide.md**（新增）：FSD 生长指南——widgets/features/entities/shared 的建立时机与代码骨架，含跨页面客户端状态（Zustand store）的提升路径，承载教学示范职责。
 - **AGENTS.md**：同步新增命令、mock 目录规则、样式约定。
 - **`example/full-fsd` 分支**（实施完成后单独进行）：基于主分支追加跨层完整示例（如 posts 列表/详情共用 entities/post 与 features），主分支保持纯净。
