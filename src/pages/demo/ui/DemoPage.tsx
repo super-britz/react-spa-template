@@ -2,6 +2,7 @@ import { useDocumentTitle } from '@/shared/lib'
 
 import { useDemoStore } from '../model/demo-store'
 import { useDemoData } from '../model/use-demo-data'
+import { FeedbackForm } from './FeedbackForm'
 
 export function DemoPage() {
   useDocumentTitle('Demo - React SPA Template')
@@ -50,6 +51,10 @@ export function DemoPage() {
           ))}
         </ul>
       )}
+
+      <div className="mt-4 border-gray-200 border-t pt-6 dark:border-gray-700">
+        <FeedbackForm />
+      </div>
 
       <p className="text-gray-400 text-xs">
         数据生成时间（DTO 字段 generated_at 映射而来）：{data?.generatedAt ?? '—'}
