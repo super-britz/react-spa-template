@@ -7,12 +7,13 @@ export function RouteError() {
   const detail = getDetail(error)
 
   return (
-    <main className="flex min-h-svh flex-1 flex-col items-center justify-center gap-4 p-8">
-      <h1 className="font-medium text-4xl text-gray-900 dark:text-gray-100">{title}</h1>
-      <p className="text-sm">{detail}</p>
+    <main className="flex min-h-svh flex-col items-center justify-center gap-3 p-8 text-center">
+      <p className="font-mono text-accent text-xs uppercase tracking-widest">Route Error</p>
+      <h1 className="font-medium text-3xl text-gray-900 dark:text-gray-100">{title}</h1>
+      <p className="max-w-md text-gray-500 text-sm dark:text-gray-400">{detail}</p>
       <Link
         to="/"
-        className="rounded-md border-2 border-transparent bg-accent-soft px-3 py-1.5 text-accent transition-colors hover:border-accent-strong"
+        className="mt-2 rounded-md bg-accent px-4 py-2 font-medium text-sm text-white no-underline transition-opacity hover:opacity-85"
       >
         返回首页
       </Link>

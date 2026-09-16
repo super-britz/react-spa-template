@@ -40,13 +40,13 @@ export function FeedbackForm() {
   }
 
   return (
-    <section className="flex w-full max-w-md flex-col gap-4 text-left">
-      <h2 className="font-medium text-gray-900 text-xl dark:text-gray-100">
-        提交反馈（表单 Demo）
-      </h2>
-      <p className="text-gray-400 text-xs">
-        内容包含 "fail" 关键字可触发服务端 500，观察错误回填。
-      </p>
+    <section className="flex w-full max-w-xl flex-col gap-4 self-start rounded-xl border border-gray-200 bg-white p-6 text-left shadow-sm dark:border-gray-700 dark:bg-gray-800/60">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-medium text-gray-900 text-xl dark:text-gray-100">提交反馈</h2>
+        <p className="text-gray-400 text-xs">
+          react-hook-form + zod 校验；内容包含 "fail" 可触发服务端 500，观察错误回填。
+        </p>
+      </div>
 
       <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)} noValidate>
         <Input label="昵称" error={errors.name?.message} {...register('name')} />
@@ -57,7 +57,7 @@ export function FeedbackForm() {
           <p className="text-green-600 text-sm dark:text-green-400">提交成功，感谢反馈！</p>
         ) : null}
 
-        <Button type="submit" disabled={isSubmitting} className="self-start">
+        <Button type="submit" variant="solid" disabled={isSubmitting} className="self-start">
           {isSubmitting ? '提交中…' : '提交反馈'}
         </Button>
       </form>
