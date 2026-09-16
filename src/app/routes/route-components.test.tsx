@@ -15,7 +15,7 @@ describe('错误兜底页面', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('404')).toBeInTheDocument()
+    expect(screen.getByText('404 Not Found')).toBeInTheDocument()
     expect(screen.getByText('返回首页')).toBeInTheDocument()
   })
 
