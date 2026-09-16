@@ -97,4 +97,4 @@ npx playwright install
 
 ## 完整跨层示例
 
-`example/full-fsd` 分支（规划中）：在主分支基础上追加 posts 列表/详情两个页面，共用 `entities/post` 与 `features/select-post`，演示完整七层生长结果。
+[`example/full-fsd` 分支](https://github.com/super-britz/react-spa-template/tree/example/full-fsd)：posts 列表/详情两个页面共用 `entities/post`，`features/like-post` 演示乐观更新，`widgets/post-list` 在两个页面复用。本文各节的代码骨架在该分支都有完整可运行的对应实现。
