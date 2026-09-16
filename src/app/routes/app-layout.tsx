@@ -12,6 +12,7 @@ export function AppLayout() {
           {[
             { to: '/', label: '首页' },
             { to: '/demo', label: 'Demo' },
+            { to: '/posts', label: '文章' },
           ].map((item) => (
             <NavLink
               key={item.to}

@@ -8,7 +8,7 @@
 Layer → Slice → Segment
 ```
 
-依赖方向自上而下：`app → pages → widgets → features → entities → shared`。当前业务使用 `app`、`pages`、`shared` 三层；`widgets`、`features`、`entities` 不预建，建立时机见 [growth-guide](growth-guide.md)。
+依赖方向自上而下：`app → pages → widgets → features → entities → shared`。main 分支使用 `app`、`pages`、`shared` 三层；**本分支（example/full-fsd）额外演示 `entities`、`features`、`widgets`**，全部七层均有真实代码。各层建立时机见 [growth-guide](growth-guide.md)。
 
 ## 当前目录
 
@@ -20,9 +20,17 @@ src/
 │   ├── routes/              # 路由表、站点布局（AppLayout）、路由错误展示
 │   └── styles/              # global.css（Tailwind 入口与 @theme 主题）
 ├── pages/                   # Pages Layer
-│   ├── home/                # 首页 Slice
+│   ├── home/                # 首页（本分支复用 widgets/post-list）
 │   ├── demo/                # Demo Slice：api / model / ui
+│   ├── posts/               # 文章列表页（消费 widgets/post-list）
+│   ├── post-details/        # 文章详情页（路由参数，消费 entities + features）
 │   └── not-found/           # 404 Slice
+├── widgets/                 # Widgets Layer（跨页面复用的组合区块）
+│   └── post-list/           # 组合 entities/post 与 features/like-post
+├── features/                # Features Layer（跨页面复用的用户动作）
+│   └── like-post/           # 点赞：useMutation 乐观更新
+├── entities/                # Entities Layer（业务实体）
+│   └── post/                # 文章：DTO 映射、queryKey、PostCard
 ├── shared/                  # Shared Layer，无业务语义，不包含 Slice
 │   ├── api/                 # axios 实例（http-client）与 ApiError
 │   ├── lib/                 # useDocumentTitle 等基础工具

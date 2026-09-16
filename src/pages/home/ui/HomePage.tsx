@@ -1,6 +1,6 @@
 import { useState } from 'react'
-
 import { useDocumentTitle } from '@/shared/lib'
+import { PostListWidget } from '@/widgets/post-list'
 
 import heroImg from './hero.png'
 import reactLogo from './react.svg'
@@ -124,6 +124,14 @@ export function HomePage() {
             ))}
           </ul>
         </div>
+      </section>
+
+      <section className="flex w-full flex-col gap-4 border-gray-200 border-t p-8 text-left dark:border-gray-700">
+        <h2 className="font-medium text-gray-900 text-lg dark:text-gray-100">最新文章</h2>
+        <p className="text-gray-400 text-xs">
+          widgets/post-list 在首页与 /posts 两处复用——widget 层存在的意义。
+        </p>
+        <PostListWidget />
       </section>
     </main>
   )

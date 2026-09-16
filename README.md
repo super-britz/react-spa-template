@@ -2,6 +2,14 @@
 
 基于 React、TypeScript、Vite 与 Feature-Sliced Design（FSD）的开箱即用 SPA 模板。
 
+> **本分支是 `example/full-fsd` 教学示例**：在 main 分支基础上追加 posts 列表/详情跨层示例，演示全部七层的真实用法。日常项目请从 `main` 分支开始。本分支演示内容：
+>
+> - `entities/post`：业务实体——DTO 映射、queryKey 集中定义、可复用的 `PostCard`（带组合插槽）
+> - `features/like-post`：用户动作——`useMutation` 乐观更新三步走（取消请求 → 快照 → 回滚/失效）
+> - `widgets/post-list`：组合区块——组合 entities 与 features，在首页和 `/posts` 两处复用
+> - `pages/posts`、`pages/post-details`：两个页面消费同一实体，详情页演示路由参数
+> - MSW：posts 相关端点（列表信封、详情 404、点赞的会话内持久状态）
+
 ## 特点
 
 - React 19、TypeScript、Vite
