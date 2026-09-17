@@ -2,6 +2,12 @@
 
 基于 React、TypeScript、Vite 与 Feature-Sliced Design（FSD）的开箱即用 SPA 模板。
 
+## 设计目标
+
+- **轻量起步**：接近 `create-vite` 的初始复杂度，但请求、路由、错误兜底、mock、测试、CI 一开始就是生产形态
+- **渐进生长**：重依赖刻意不预装，有真实需求时按 [growth-guide](docs/growth-guide.md) 的路径扩展，避免模板越用越重
+- **约束内建**：FSD 架构边界由 Steiger 静态检查、pre-commit 与 CI 三层兜底，而不是依赖自觉
+
 ## 特点
 
 - React 19、TypeScript、Vite
@@ -20,6 +26,8 @@
 **刻意不预装**（有真实需求时按 [growth-guide](docs/growth-guide.md) 扩展）：UI 组件库、i18n、E2E、监控、认证骨架、全局状态总线。
 
 ## 开发命令
+
+要求 Node `^20.19.0 || >=22.12.0`（与 `package.json` 的 `engines` 一致）。
 
 ```bash
 npm install
