@@ -38,6 +38,7 @@ app → pages → widgets → features → entities → shared
 - 被多个上层 Slice 使用的稳定业务概念，确有需要时放在 `entities`。
 - 不包含具体业务语义的 HTTP Client、UI Kit、工具和配置放在 `shared`。
 - 请求函数放 Slice 的 `api` Segment；后端 DTO 与映射只允许出现在该文件，其余代码只用领域类型。
+- DTO 映射按需进行：用于消除具体的耦合、歧义或重复适配；接口已符合领域契约时直接返回，不为分层机械改名或逐字段复制。判断示例见 `docs/architecture.md` 的“什么时候需要映射”。
 - Query hook 与 Zustand store 放 Slice 的 `model` Segment；store 不复制服务端数据。
 - 只被一个 Slice 使用的图片、样式和其他资源与该 Slice 就近放置。
 
